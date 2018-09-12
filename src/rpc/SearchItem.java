@@ -2,6 +2,7 @@ package rpc;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -11,10 +12,14 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.json.*;
 
+import database.MySQLConnection;
+import entity.Item;
+import external.YelpAPI;
+
 /**
  * Servlet implementation class SearchItem
  */
-@WebServlet("/search") //will be used at front-end
+@WebServlet("/search") //will be used at front-end, http://...com/search
 public class SearchItem extends HttpServlet {
 	private static final long serialVersionUID = 1L;
        
@@ -31,26 +36,25 @@ public class SearchItem extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		// TODO Auto-generated method stub
-		//response.getWriter().append("Served at: ").append(request.getContextPath());
+		double lat = Double.parseDouble(request.getParameter("lat"));
+		double lon = Double.parseDouble(request.getParameter("lon"));
+		//DB operations	
+		String term = request.getParameter("term");
+		MySQLConnection connection = new MySQLConnection();
+        try {
+            List<Item> items = connection.searchItems(lat, lon, term);
 
-		JSONArray array = new JSONArray();
-		/*out.println("<html><body>");
-		out.println("<h1>Hello World</h1>");
-		out.println("</body></html>");
-		out.close();
-		*/
-		if (request.getParameter("username") != null) {
-			
-			try {
-				array.put(new JSONObject().put("username", "abc"));
-				array.put(new JSONObject().put("username", "123"));
-				
-			} catch (JSONException e){
-				e.printStackTrace();
-			}
-			RpcHelper.writeJsonArray(response, array);
-		}
-		
+            JSONArray array = new JSONArray();
+            for (Item item : items) {
+                array.put(item.toJSONObject());
+            }
+            RpcHelper.writeJsonArray(response, array);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            connection.close();
+        }
 	}
 
 	/**
@@ -62,3 +66,4 @@ public class SearchItem extends HttpServlet {
 	}
 
 }
+
