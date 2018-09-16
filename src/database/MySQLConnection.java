@@ -3,6 +3,7 @@ package database;
 import java.sql.*;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -69,19 +70,85 @@ public class MySQLConnection {
                }
 
     }
-
+    
     public Set<String> getFavoriteItemIds(String userId) {
-        return null;
+        if (conn == null) {
+            return new HashSet<>();
+        }
+        Set<String> favoriteItemIds = new HashSet<>();
+        String sql = "SELECT item_id FROM history WHERE user_id = ?";
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, userId);
+            ResultSet rs = ps.executeQuery();
+            
+            while (rs.next()) {
+                favoriteItemIds.add(rs.getString("item_id"));
+            }        
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return favoriteItemIds;
     }
 
     public Set<Item> getFavoriteItems(String userId) {
-        return null;
+        if (conn == null) {
+            return new HashSet<>();
+        }
+        Set<Item> favoriteItems = new HashSet<>();
+        Set<String> itemIds = getFavoriteItemIds(userId);
+        
+        String sql = "SELECT * FROM items WHERE item_id = ?";
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            for (String itemId : itemIds) {
+                ps.setString(1, itemId);
+                ResultSet rs = ps.executeQuery();
+                
+                ItemBuilder builder = new ItemBuilder();
+                while (rs.next()) {
+                    builder.setItemId(rs.getString("item_id"));
+                    builder.setName(rs.getString("name"));
+                    builder.setAddress(rs.getString("address"));
+                    builder.setImageUrl(rs.getString("image_url"));
+                    builder.setUrl(rs.getString("url"));
+                    builder.setRating(rs.getDouble("rating"));
+                    builder.setDistance(rs.getDouble("distance"));
+                    builder.setCategories(getCategories(itemId));
+                    
+                    favoriteItems.add(builder.build());
+                }
+            }    
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return favoriteItems;
     }
+
 
     public Set<String> getCategories(String itemId) {
-        return null;
+        if (conn == null) {
+            return null;
+        }
+        Set<String> categories = new HashSet<>();
+        String sql = "SELECT category FROM categories WHERE item_id = ?";
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, itemId);
+            ResultSet rs = ps.executeQuery();
+            
+            while (rs.next()) {
+                categories.add(rs.getString("category"));
+            }        
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        
+        return categories;
     }
 
+
+    
     public List<Item> searchItems(double lat, double lon, String term) {
     	// Connect to external API
         YelpAPI api = new YelpAPI();
